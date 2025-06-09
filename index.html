@@ -68,14 +68,6 @@
         subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
         attribution: '© Google'
       }),
-      "Mapbox Streets": L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNqeWZkYjQ4YTAweGszb2xtbTgwZTZ1azIifQ.LuRx6TRyOQe6jq-MTzMbGQ', {
-        tileSize: 512,
-        zoomOffset: -1,
-        attribution: '© Mapbox © OpenStreetMap'
-      }),
-      "ESRI World Imagery": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles © Esri'
-      })
     };
 
     baseLayers["แผนที่ถนน (OSM)"].addTo(map);
