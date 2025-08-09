@@ -5,185 +5,571 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ระบบแผนที่ - ครบชุด</title>
 
-  <!-- Leaflet -->
+  <!-- Leaflet Core -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-  <!-- Leaflet Draw -->
+  <!-- Plugins: Leaflet Draw, Geocoder, Markercluster, Toastify -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
   <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
-
-  <!-- Omnivore and file handling -->
   <script src="https://unpkg.com/jszip/dist/jszip.min.js"></script>
   <script src="https://unpkg.com/togeojson@0.16.0/dist/togeojson.min.js"></script>
   <script src="https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>
   <script src="https://unpkg.com/tokml/tokml.js"></script>
-
-  <!-- Geocoder -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
   <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
 
+  <!-- Toastify-js for better notifications -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+  
+  <!-- Custom Styles -->
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; }
-    .menu {
+    .map-menu {
       position: absolute;
-      top: 50%;
-      left: 10px;
-      transform: translateY(-50%);
+      top: 150px;
+      right: 10px;
       z-index: 1000;
-      background: rgba(255,255,255,0.9);
+      background: #1a237e;
+      color: #ffffff;
       padding: 10px;
       border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      font-family: sans-serif;
+      transition: width 0.3s ease;
+      width: 50px; /* Collapsed width */
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
-    .menu button, .menu input[type="file"] {
-      display: block;
-      margin: 5px 0;
+    .map-menu.expanded {
+      width: 250px; /* Expanded width */
+    }
+    .map-menu-header {
+      display: flex;
+      justify-content: center;
+      align-items: center;
       width: 100%;
+      padding-bottom: 10px;
+      cursor: pointer;
+    }
+    .map-menu-toggle-btn {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: #ffffff;
+      padding: 0;
+    }
+    .map-menu-content {
+      width: 100%;
+      transition: opacity 0.3s ease-out;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .map-menu.expanded .map-menu-content {
+      opacity: 1;
+      pointer-events: auto;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .map-menu button, .map-menu input[type="file"] {
+      display: block;
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 4px;
+      background-color: #3f51b5;
+      color: #ffffff;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .map-menu button:hover {
+      background-color: #5c6bc0;
+    }
+    .map-menu input[type="file"] {
+      border: 1px dashed rgba(255, 255, 255, 0.5);
+      padding: 10px;
+    }
+    .leaflet-popup-content img {
+      max-width: 100%;
+      height: auto;
+      margin-top: 10px;
+      display: block;
+      border-radius: 4px;
+    }
+    .leaflet-popup-content iframe {
+      display: block;
+      margin-top: 10px;
+    }
+    .control-container {
+      margin-top: 10px;
+    }
+
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 2000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.4);
+      justify-content: center;
+      align-items: center;
+      font-family: sans-serif;
+    }
+    .modal-content {
+      background-color: #fefefe;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      width: 80%;
+      max-width: 400px;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+    }
+    .modal-header h2 {
+      margin: 0;
+      color: #1a237e;
+    }
+    .modal-close {
+      color: #aaa;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .modal-close:hover,
+    .modal-close:focus {
+      color: #000;
+    }
+    .modal-body label {
+      display: block;
+      margin-top: 10px;
+      color: #333;
+    }
+    .modal-body input, .modal-body textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+    .modal-footer button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+    .modal-footer .cancel-btn {
+      background-color: #e0e0e0;
+      color: #333;
+    }
+    .modal-footer .cancel-btn:hover {
+      background-color: #bdbdbd;
+    }
+    .modal-footer .save-btn {
+      background-color: #3f51b5;
+      color: #ffffff;
+      margin-left: 10px;
+    }
+    .modal-footer .save-btn:hover {
+      background-color: #5c6bc0;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
-  <div class="menu">
-    <button onclick="enableAddMarker()">เพิ่มจุดพิกัด</button>
-    <button onclick="saveGeoJSON()">💾 บันทึก GeoJSON</button>
-    <button onclick="exportAs('kml')">📤 บันทึก KML</button>
-    <button onclick="openStreetView()">📍 มุมมอง Street View</button>
-    <input type="file" accept=".geojson,.kml,.gpx,.kmz" onchange="loadFile(event)">
+  <div class="map-menu expanded">
+    <div class="map-menu-header">
+      <button id="menu-toggle-btn" class="map-menu-toggle-btn">◀</button>
+    </div>
+    <div id="menu-content" class="map-menu-content">
+      <button id="add-marker-btn">📌 เพิ่มจุดพิกัด</button>
+      <div class="control-container">
+        <button id="save-geojson-btn">💾 บันทึก GeoJSON</button>
+        <button id="export-kml-btn">📤 บันทึก KML</button>
+        <button id="clear-layers-btn">🗑️ ล้างข้อมูลทั้งหมด</button>
+      </div>
+      <div class="control-container">
+        <button id="open-streetview-btn">📍 มุมมอง Street View</button>
+        <button id="share-link-btn">🔗 แชร์ลิงก์</button>
+      </div>
+      <div class="control-container">
+        <label for="file-input" style="display: block; text-align: center; margin-bottom: 5px;">นำเข้าไฟล์ (.geojson, .kml, .gpx)</label>
+        <input type="file" id="file-input" accept=".geojson,.kml,.gpx" />
+      </div>
+    </div>
   </div>
 
+  <!-- Modal for adding markers -->
+  <div id="addMarkerModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>เพิ่มจุดพิกัด</h2>
+        <span class="modal-close">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="marker-form">
+          <label for="marker-name">ชื่อจุด:</label>
+          <input type="text" id="marker-name" name="name">
+          <label for="marker-desc">คำอธิบาย (รองรับ URL รูปภาพ):</label>
+          <textarea id="marker-desc" name="description" rows="4"></textarea>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button id="cancel-marker-btn" class="cancel-btn">ยกเลิก</button>
+        <button id="save-marker-btn" class="save-btn">บันทึก</button>
+      </div>
+    </div>
+  </div>
+  
   <script>
-    const map = L.map('map').setView([13.75, 100.5], 6);
+    // 1. Initialize Map and Layers
+    let map, markers, drawnItems, drawControl;
+    let markerLatlng = null; // Store latlng for the new marker
 
-    const baseLayers = {
-      "แผนที่ถนน (OSM)": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-      }),
-      "Google ภาพถ่ายดาวเทียม": L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-        attribution: '© Google'
-      }),
-      "Google ภูมิประเทศ": L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
-        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-        attribution: '© Google'
-      }),
-    };
+    window.onload = function() {
+      // 1.1 Map Initialization
+      map = L.map('map').setView([13.75, 100.5], 6);
 
-    baseLayers["แผนที่ถนน (OSM)"].addTo(map);
-    L.control.layers(baseLayers).addTo(map);
-
-    const drawnItems = new L.FeatureGroup().addTo(map);
-    const drawControl = new L.Control.Draw({
-      edit: { featureGroup: drawnItems },
-      draw: { polygon: true, polyline: true, rectangle: false, circle: false, circlemarker: false, marker: false }
-    });
-    map.addControl(drawControl);
-
-    map.on(L.Draw.Event.CREATED, (e) => {
-      drawnItems.addLayer(e.layer);
-    });
-
-    function enableAddMarker() {
-      alert("คลิกบนแผนที่เพื่อเพิ่มจุดพิกัด");
-      const handler = (e) => {
-        const name = prompt("ชื่อจุด:");
-        const desc = prompt("คำอธิบาย (URL รูปได้):");
-        const m = L.marker(e.latlng).addTo(drawnItems);
-        let html = `<b>${name || 'ไม่มีชื่อ'}</b><br>${desc || ''}`;
-        if (desc?.match(/^https?:\/\/.*\.(jpg|png|gif)$/i)) {
-          html += `<br><img src="${desc}" width="150">`;
-        }
-        const lat = e.latlng.lat.toFixed(6);
-        const lng = e.latlng.lng.toFixed(6);
-        html += `<br><iframe width="250" height="150" frameborder="0" style="border:0"
-          src="https://www.google.com/maps?q=&layer=c&cbll=${lat},${lng}&cbp=11,0,0,0,0&output=embed"
-          allowfullscreen></iframe>`;
-        m.bindPopup(html);
-        map.off('click', handler);
+      const baseLayers = {
+        "Google Hybrid": L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+          subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+          attribution: '© Google'
+        }),
+        "แผนที่ถนน (OSM)": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors'
+        }),
+        "Google ภาพถ่ายดาวเทียม": L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+          subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+          attribution: '© Google'
+        }),
+        "Google ภูมิประเทศ": L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+          subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+          attribution: '© Google'
+        }),
       };
-      map.on('click', handler);
-    }
 
-    function saveGeoJSON() {
-      const data = drawnItems.toGeoJSON();
-      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'map.geojson';
-      a.click();
-    }
+      baseLayers["Google Hybrid"].addTo(map);
+      L.control.layers(baseLayers).addTo(map);
 
-    function exportAs(format) {
-      const geojson = drawnItems.toGeoJSON();
-      if (format === 'kml') {
-        const kml = tokml(geojson);
-        const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'map.kml';
-        a.click();
+      // Use MarkerCluster for better performance with many markers
+      markers = new L.markerClusterGroup();
+      drawnItems = new L.FeatureGroup();
+      map.addLayer(markers);
+      map.addLayer(drawnItems);
+
+      // 1.2 Draw Control
+      drawControl = new L.Control.Draw({
+        edit: { featureGroup: drawnItems },
+        draw: {
+          polygon: true,
+          polyline: true,
+          rectangle: true,
+          circle: true,
+          circlemarker: true,
+          marker: false // Use custom button for adding markers
+        }
+      });
+      map.addControl(drawControl);
+
+      map.on(L.Draw.Event.CREATED, (e) => {
+        drawnItems.addLayer(e.layer);
+        showToast("สร้างรูปร่างสำเร็จ");
+      });
+
+      // 2. DOM Elements and Event Listeners
+      const addMarkerBtn = document.getElementById('add-marker-btn');
+      const saveGeoJSONBtn = document.getElementById('save-geojson-btn');
+      const exportKMLBtn = document.getElementById('export-kml-btn');
+      const openStreetViewBtn = document.getElementById('open-streetview-btn');
+      const shareLinkBtn = document.getElementById('share-link-btn');
+      const fileInput = document.getElementById('file-input');
+      const clearLayersBtn = document.getElementById('clear-layers-btn');
+      const menuToggleBtn = document.getElementById('menu-toggle-btn');
+      const mapMenu = document.querySelector('.map-menu');
+      
+      const modal = document.getElementById('addMarkerModal');
+      const modalCloseBtn = modal.querySelector('.modal-close');
+      const cancelMarkerBtn = document.getElementById('cancel-marker-btn');
+      const saveMarkerBtn = document.getElementById('save-marker-btn');
+      const markerForm = document.getElementById('marker-form');
+
+      // 2.1 Main Menu Events
+      addMarkerBtn.addEventListener('click', enableAddMarker);
+      saveGeoJSONBtn.addEventListener('click', saveGeoJSON);
+      exportKMLBtn.addEventListener('click', () => exportAs('kml'));
+      openStreetViewBtn.addEventListener('click', openStreetView);
+      shareLinkBtn.addEventListener('click', copyShareLink);
+      fileInput.addEventListener('change', loadFile);
+      clearLayersBtn.addEventListener('click', clearLayers);
+      menuToggleBtn.addEventListener('click', toggleMenu);
+
+      // 2.2 Modal Events
+      modalCloseBtn.addEventListener('click', () => modal.style.display = 'none');
+      cancelMarkerBtn.addEventListener('click', () => modal.style.display = 'none');
+      saveMarkerBtn.addEventListener('click', saveMarkerFromModal);
+      window.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.style.display = 'none';
+        }
+      });
+
+      function toggleMenu() {
+        const isExpanded = mapMenu.classList.toggle('expanded');
+        menuToggleBtn.textContent = isExpanded ? '▶' : '◀';
       }
-    }
 
-    function copyShareLink() {
-      const geojson = drawnItems.toGeoJSON();
-      const encoded = encodeURIComponent(JSON.stringify(geojson));
-      const url = `${location.origin}${location.pathname}?data=${encoded}`;
-      navigator.clipboard.writeText(url).then(() => alert("คัดลอกลิงก์แล้ว!"));
-    }
+      // Set initial state
+      mapMenu.classList.add('expanded');
+      menuToggleBtn.textContent = '◀';
 
-    function loadFile(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const content = e.target.result;
-        let layer;
-        if (file.name.endsWith('.geojson') || file.name.endsWith('.json')) {
-          layer = L.geoJSON(JSON.parse(content));
-        } else if (file.name.endsWith('.kml')) {
-          const kml = (new DOMParser()).parseFromString(content, 'text/xml');
-          layer = omnivore.kml.parse(kml);
-        } else if (file.name.endsWith('.gpx')) {
-          const gpx = (new DOMParser()).parseFromString(content, 'text/xml');
-          layer = omnivore.gpx.parse(gpx);
+
+      // 3. Utility Functions
+      function showToast(message, type = 'success') {
+        Toastify({
+          text: message,
+          duration: 3000,
+          close: true,
+          gravity: "top",
+          position: "right",
+          backgroundColor: type === 'success' ? "linear-gradient(to right, #00b09b, #96c93d)" : "linear-gradient(to right, #ff5f6d, #ffc371)",
+        }).showToast();
+      }
+      
+      function clearLayers() {
+        if (drawnItems.getLayers().length > 0 || markers.getLayers().length > 0) {
+          drawnItems.clearLayers();
+          markers.clearLayers();
+          showToast("ล้างข้อมูลทั้งหมดสำเร็จ");
         } else {
-          alert("ไม่รองรับไฟล์นี้");
+          showToast("ไม่มีข้อมูลบนแผนที่ให้ล้าง", 'error');
+        }
+      }
+
+      function enableAddMarker() {
+        showToast("คลิกบนแผนที่เพื่อเพิ่มจุดพิกัด");
+        map.once('click', (e) => {
+          markerLatlng = e.latlng;
+          markerForm.reset(); // Clear form inputs
+          modal.style.display = 'flex';
+        });
+      }
+
+      function saveMarkerFromModal() {
+        if (!markerLatlng) {
+          showToast("ตำแหน่งจุดพิกัดไม่ถูกต้อง", 'error');
           return;
         }
-        layer.on('ready', () => map.fitBounds(layer.getBounds()));
-        layer.addTo(drawnItems);
-      };
-      reader.readAsText(file);
-    }
 
-    function openStreetView() {
-      const center = map.getCenter();
-      const lat = center.lat.toFixed(6);
-      const lng = center.lng.toFixed(6);
-      const url = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`;
-      window.open(url, '_blank');
-    }
+        const name = document.getElementById('marker-name').value;
+        const desc = document.getElementById('marker-desc').value;
 
-    window.addEventListener("load", () => {
+        const marker = L.marker(markerLatlng).addTo(markers);
+
+        let html = `<b>${name || 'ไม่มีชื่อ'}</b><br>${desc || ''}`;
+        if (desc && desc.match(/^https?:\/\/.*\.(jpg|png|gif)$/i)) {
+          html += `<br><img src="${desc}" width="150" alt="รูปภาพ">`;
+        }
+        marker.bindPopup(html);
+
+        modal.style.display = 'none';
+        showToast("เพิ่มจุดพิกัดสำเร็จ");
+        markerLatlng = null; // Clear latlng after saving
+      }
+
+      function saveGeoJSON() {
+        try {
+          const combinedData = {
+            "type": "FeatureCollection",
+            "features": []
+          };
+          
+          drawnItems.toGeoJSON().features.forEach(f => combinedData.features.push(f));
+          markers.toGeoJSON().features.forEach(f => combinedData.features.push(f));
+
+          const blob = new Blob([JSON.stringify(combinedData)], { type: 'application/json' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'map.geojson';
+          a.click();
+          showToast("บันทึก GeoJSON สำเร็จ");
+        } catch (error) {
+          showToast("เกิดข้อผิดพลาดในการบันทึก", 'error');
+          console.error(error);
+        }
+      }
+
+      function exportAs(format) {
+        try {
+          const combinedData = {
+            "type": "FeatureCollection",
+            "features": []
+          };
+          drawnItems.toGeoJSON().features.forEach(f => combinedData.features.push(f));
+          markers.toGeoJSON().features.forEach(f => combinedData.features.push(f));
+
+          if (format === 'kml') {
+            const kml = tokml(combinedData);
+            const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'map.kml';
+            a.click();
+            showToast("บันทึก KML สำเร็จ");
+          }
+        } catch (error) {
+          showToast("เกิดข้อผิดพลาดในการบันทึก KML", 'error');
+          console.error(error);
+        }
+      }
+
+      function copyShareLink() {
+        try {
+          const combinedData = {
+            "type": "FeatureCollection",
+            "features": []
+          };
+          drawnItems.toGeoJSON().features.forEach(f => combinedData.features.push(f));
+          markers.toGeoJSON().features.forEach(f => combinedData.features.push(f));
+          
+          const encoded = encodeURIComponent(JSON.stringify(combinedData));
+          const url = `${location.origin}${location.pathname}?data=${encoded}`;
+          const tempInput = document.createElement('textarea');
+          tempInput.value = url;
+          document.body.appendChild(tempInput);
+          tempInput.select();
+          document.execCommand('copy');
+          document.body.removeChild(tempInput);
+
+          showToast("คัดลอกลิงก์สำเร็จ!");
+        } catch (error) {
+          showToast("เกิดข้อผิดพลาดในการสร้างลิงก์", 'error');
+        }
+      }
+
+      function createPopupContent(properties) {
+        let popupContent = '<b>คุณสมบัติ</b><br>';
+        for (const key in properties) {
+          if (properties.hasOwnProperty(key)) {
+            const value = properties[key];
+            if (value && typeof value !== 'object') {
+              popupContent += `${key}: ${value}<br>`;
+            }
+          }
+        }
+        return popupContent;
+      }
+
+      function loadFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          try {
+            const content = e.target.result;
+            let layer;
+            
+            if (file.name.endsWith('.geojson') || file.name.endsWith('.json')) {
+              const geojson = JSON.parse(content);
+              layer = L.geoJSON(geojson, {
+                onEachFeature: (feature, layer) => {
+                  if (feature.properties) {
+                    layer.bindPopup(createPopupContent(feature.properties));
+                  }
+                }
+              });
+            } else if (file.name.endsWith('.kml')) {
+              const kml = (new DOMParser()).parseFromString(content, 'text/xml');
+              layer = omnivore.kml.parse(kml);
+            } else if (file.name.endsWith('.gpx')) {
+              const gpx = (new DOMParser()).parseFromString(content, 'text/xml');
+              layer = omnivore.gpx.parse(gpx);
+            } else {
+              showToast("ไม่รองรับไฟล์นี้", 'error');
+              return;
+            }
+
+            // omnivore.kml and omnivore.gpx don't have .toGeoJSON() method
+            if (layer.toGeoJSON) {
+                const geojson = layer.toGeoJSON();
+                L.geoJSON(geojson, {
+                  onEachFeature: (feature, l) => {
+                    if (feature.properties) {
+                      l.bindPopup(createPopupContent(feature.properties));
+                    }
+                  }
+                }).addTo(drawnItems);
+            } else {
+              // For omnivore layers, add them directly and wait for 'ready' event
+              layer.on('ready', () => {
+                if (layer.getBounds().isValid()) {
+                  map.fitBounds(layer.getBounds());
+                }
+                showToast("นำเข้าไฟล์สำเร็จ");
+              });
+              layer.addTo(drawnItems);
+            }
+
+          } catch (error) {
+            showToast("เกิดข้อผิดพลาดในการอ่านไฟล์", 'error');
+            console.error(error);
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function openStreetView() {
+        const center = map.getCenter();
+        const lat = center.lat.toFixed(6);
+        const lng = center.lng.toFixed(6); 
+        const url = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`;
+        window.open(url, '_blank');
+      }
+
       const params = new URLSearchParams(location.search);
       if (params.has("data")) {
         try {
           const data = JSON.parse(decodeURIComponent(params.get("data")));
           L.geoJSON(data).addTo(drawnItems);
+          showToast("โหลดข้อมูลจากลิงก์สำเร็จ");
         } catch (e) {
-          alert("ลิงก์ข้อมูลไม่ถูกต้อง");
+          showToast("ลิงก์ข้อมูลไม่ถูกต้อง", 'error');
         }
       }
-    });
 
-    L.Control.geocoder({
-      defaultMarkGeocode: true,
-      placeholder: 'ค้นหาสถานที่...',
-      errorMessage: 'ไม่พบ',
-      geocoder: L.Control.Geocoder.nominatim()
-    }).addTo(map);
+      // Geocoder Control
+      L.Control.geocoder({
+        defaultMarkGeocode: true,
+        placeholder: 'ค้นหาสถานที่...',
+        errorMessage: 'ไม่พบ',
+        geocoder: L.Control.Geocoder.nominatim()
+      }).addTo(map);
+    };
+
   </script>
 </body>
 </html>
